@@ -1,0 +1,92 @@
+import numpy as np
+from keras.preprocessing import image
+import cv2
+import time
+import os
+import tensorflow as tf
+from keras.utils import to_categorical
+import cv2
+import glob
+import random
+from keras.layers import BatchNormalization
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Input, Activation, Dense, Conv2D, MaxPooling2D, ZeroPadding2D, Flatten
+import keras
+train_datagen = ImageDataGenerator(rescale = 1./255,
+                                   shear_range = 0.2,
+                                   zoom_range = 0.2,
+                                   horizontal_flip = True)
+training_set = train_datagen.flow_from_directory('python cnn\\train',
+                                                 target_size = (128, 128),
+                                                 batch_size = 32,
+                                                 class_mode = 'categorical')
+test_datagen = ImageDataGenerator(rescale = 1./255)
+test_set = test_datagen.flow_from_directory('python cnn\\test',
+                                            target_size = (128, 128),
+                                            batch_size = 32,
+                                            class_mode = 'categorical')
+print("Image Processing.......Compleated")
+cnn = tf.keras.models.Sequential()
+print("Building Neural Network.....")
+
+cnn.add(Conv2D(64,3,activation='relu',input_shape=(128,128,3)))
+cnn.add(MaxPooling2D(2,2))
+cnn.add(BatchNormalization())
+
+cnn.add(Conv2D(128,3,activation='relu'))
+cnn.add(MaxPooling2D(2,2))
+cnn.add(BatchNormalization())
+
+cnn.add(Conv2D(256,3,activation='relu'))
+cnn.add(Conv2D(256,3,activation='relu'))
+cnn.add(MaxPooling2D(2,2))
+cnn.add(BatchNormalization())
+
+cnn.add(Conv2D(512,3,activation='relu'))
+cnn.add(Conv2D(512,3,activation='relu'))
+cnn.add(MaxPooling2D(2,2))
+cnn.add(BatchNormalization())
+
+cnn.add(Conv2D(512,3,activation='relu'))
+cnn.add(Conv2D(512,3,activation='relu'))
+cnn.add(MaxPooling2D(2,2))
+cnn.add(BatchNormalization())
+
+cnn.add(Flatten())
+cnn.add(Dense(4096,activation='relu'))
+cnn.add(Dense(4096,activation='relu'))
+cnn.add(Dense(1000,activation='relu'))
+cnn.add(Dense(4,activation='softmax',name='predictions'))
+cnn.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+print("Training cnn")
+
+a = glob.glob('weight.h5')
+if (os.path.exists("weight.h5")):
+    cnn.load_weights('weight.h5')
+    print("weight found .. loading weight.")
+else:
+    cnn.fit(training_set, validation_data=test_set, batch_size=128, epochs=50)
+    cnn.save_weights('weight.h5')
+    print("weight not found ... creating one...")
+print(training_set.class_indices)
+
+vid = cv2.VideoCapture(0)
+print("Camera connection successfully established")
+i = 0
+while(True):
+    r, frame = vid.read()
+    cv2.imshow('frame', frame)
+    cv2.imwrite('C:\\Users\\pande\\Desktop\\srai\\cnn_ankur1\\python cnn\\result\\final'+str(i)+".jpg", frame)
+    test_image = keras.utils.load_img('C:\\Users\\pande\\Desktop\\srai\\cnn_ankur1\\python cnn\\result\\final'+str(i)+".jpg", target_size = (128, 128))
+    test_image = keras.utils.img_to_array(test_image)
+    test_image = np.expand_dims(test_image, axis = 0)
+    result = cnn.predict(test_image)
+    training_set.class_indices
+    print(result)
+    
+    os.remove('C:\\Users\\pande\\Desktop\\srai\\cnn_ankur1\\python cnn\\result\\final'+str(i)+".jpg")
+    i=i+1
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+vid.release()
+cv2.destroyAllWindows()
